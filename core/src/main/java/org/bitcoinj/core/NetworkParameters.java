@@ -250,7 +250,7 @@ public abstract class NetworkParameters {
             return UnitTestParams.get();
         } else if (pmtProtocolId.equals(PAYMENT_PROTOCOL_ID_REGTEST)) {
             return RegTestParams.get();
-        } else if (pmtProtocolId.equals(PAYMENT_PROTOCOL_ID_VTKNTEST)) {
+        } else if (pmtProtocolId.equals(PAYMENT_PROTOCOL_ID_VTKNTESTNET)) {
             return VtknTestNetParams.get();
         } else {
             return null;
