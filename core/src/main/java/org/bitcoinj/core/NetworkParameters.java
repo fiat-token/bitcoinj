@@ -59,6 +59,8 @@ public abstract class NetworkParameters {
     public static final String ID_REGTEST = "org.bitcoin.regtest";
     /** Unit test network. */
     public static final String ID_UNITTESTNET = "org.bitcoinj.unittest";
+    /** Unit test network. */
+    public static final String ID_VTKNTESTNET = "org.bitcoinj.vtkntest";
 
     /** The string used by the payment protocol to represent the main net. */
     public static final String PAYMENT_PROTOCOL_ID_MAINNET = "main";
@@ -67,6 +69,7 @@ public abstract class NetworkParameters {
     /** The string used by the payment protocol to represent unit testing (note that this is non-standard). */
     public static final String PAYMENT_PROTOCOL_ID_UNIT_TESTS = "unittest";
     public static final String PAYMENT_PROTOCOL_ID_REGTEST = "regtest";
+    public static final String PAYMENT_PROTOCOL_ID_VTKNTEST = "vtkntest";
 
     // TODO: Seed nodes should be here as well.
 
@@ -192,6 +195,11 @@ public abstract class NetworkParameters {
         return RegTestParams.get();
     }
 
+    @Deprecated
+    public static NetworkParameters vtknTestNet() {
+        return VtknTestNetParams.get();
+    }
+
     /**
      * A Java package style string acting as unique ID for these parameters
      */
@@ -224,6 +232,8 @@ public abstract class NetworkParameters {
             return UnitTestParams.get();
         } else if (id.equals(ID_REGTEST)) {
             return RegTestParams.get();
+        } else if (id.equals(ID_VTKNTESTNET)) {
+            return VtknTestNetParams.get();
         } else {
             return null;
         }
@@ -240,6 +250,8 @@ public abstract class NetworkParameters {
             return UnitTestParams.get();
         } else if (pmtProtocolId.equals(PAYMENT_PROTOCOL_ID_REGTEST)) {
             return RegTestParams.get();
+        } else if (pmtProtocolId.equals(PAYMENT_PROTOCOL_ID_VTKNTEST)) {
+            return VtknTestNetParams.get();
         } else {
             return null;
         }
