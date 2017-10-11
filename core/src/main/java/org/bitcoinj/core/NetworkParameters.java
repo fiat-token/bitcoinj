@@ -69,7 +69,7 @@ public abstract class NetworkParameters {
     /** The string used by the payment protocol to represent unit testing (note that this is non-standard). */
     public static final String PAYMENT_PROTOCOL_ID_UNIT_TESTS = "unittest";
     public static final String PAYMENT_PROTOCOL_ID_REGTEST = "regtest";
-    public static final String PAYMENT_PROTOCOL_ID_VTKNTEST = "vtkntest";
+    public static final String PAYMENT_PROTOCOL_ID_VTKNTESTNET = "vtkntest";
 
     // TODO: Seed nodes should be here as well.
 
