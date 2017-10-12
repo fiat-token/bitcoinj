@@ -16,10 +16,15 @@
 
 package org.bitcoinj.params;
 
-import org.bitcoinj.core.Block;
-import org.bitcoinj.core.Utils;
+import org.bitcoinj.core.*;
+import org.bitcoinj.script.Script;
+import org.bitcoinj.script.ScriptOpCodes;
+
+import java.io.ByteArrayOutputStream;
 
 import static com.google.common.base.Preconditions.checkState;
+import static org.bitcoinj.core.Coin.FIFTY_COINS;
+import static org.bitcoinj.core.Coin.ZERO;
 
 /**
  * Parameters for the old version 2 testnet. This is not useful to you - it exists only because some unit tests are
@@ -33,8 +38,9 @@ public class VtknTestNetParams extends AbstractBitcoinNetParams {
     public VtknTestNetParams() {
         super();
         id = ID_VTKNTESTNET;
-        packetMagic = 0xbfda034eL;
-        port = 9045;
+        packetMagic = 0x110a034eL;
+        //port = 9045;
+        port = 18444;
         addressHeader = 111;
         p2shHeader = 196;
         acceptableAddressCodes = new int[] { addressHeader, p2shHeader };
@@ -44,15 +50,17 @@ public class VtknTestNetParams extends AbstractBitcoinNetParams {
         dumpedPrivateKeyHeader = 239;
         genesisBlock.setTime(1504224000L);
         genesisBlock.setDifficultyTarget(0x207fFFFFL);
-        genesisBlock.setNonce(50);
+        genesisBlock.setNonce(100);
         spendableCoinbaseDepth = 100;
         subsidyDecreaseBlockCount = 210000;
+
         String genesisHash = genesisBlock.getHashAsString();
         //checkState(genesisHash.equals("00000007199508e34a9ff81e6ec0c477a4cccff2a4767a8eee39c11db367b008"));
         dnsSeeds = null;
         addrSeeds = null;
         bip32HeaderPub = 0x043587CF;
         bip32HeaderPriv = 0x04358394;
+
 
         majorityEnforceBlockUpgrade = VTKNTESTNET_MAJORITY_ENFORCE_BLOCK_UPGRADE;
         majorityRejectBlockOutdated = VTKNTESTNET_MAJORITY_REJECT_BLOCK_OUTDATED;
@@ -70,12 +78,49 @@ public class VtknTestNetParams extends AbstractBitcoinNetParams {
     private static Block genesis;
     @Override
     public Block getGenesisBlock() {
-        synchronized (RegTestParams.class) {
+        synchronized (AbstractBitcoinNetParams.class) {
             if (genesis == null) {
-                genesis = super.getGenesisBlock();
-                genesis.setNonce(2);
+                genesis = new Block(this, Block.BLOCK_VERSION_GENESIS);
+                genesis.setNonce(100);
                 genesis.setDifficultyTarget(0x207fFFFFL);
-                genesis.setTime(1296688602L);
+                genesis.setTime(1504224000L);
+
+                Transaction t = new Transaction(this);
+                try {
+                    // A script containing the difficulty bits and the following message:
+                    //
+                    //   "Virtual Token birth"
+                    byte[] bytes = Utils.HEX.decode
+                            ("04ffff00"+"1d0104"+"13"+
+                                    "5669727475616c20546f6b656e206269727468");
+                    //byte[] bytes = Utils.HEX.decode
+                    //        ("04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73");
+
+                    t.addInput(new TransactionInput(this, t, bytes));
+                    ByteArrayOutputStream scriptPubKeyBytes = new ByteArrayOutputStream();
+                    scriptPubKeyBytes.write(ScriptOpCodes.OP_RETURN);
+                    t.addOutput(new TransactionOutput(this, t, ZERO, scriptPubKeyBytes.toByteArray()));
+                } catch (Exception e) {
+                    // Cannot happen.
+                    throw new RuntimeException(e);
+                }
+                genesis.addTransaction(t);
+
+
+                try {
+                    ByteArrayOutputStream challengeBytes = new ByteArrayOutputStream();
+                    challengeBytes.write(ScriptOpCodes.OP_1);
+                    Script.writeBytes(challengeBytes, Utils.HEX.decode("029c2ddd78a0f95f4e787554bfb4f74b2d7dcf40f79f443e5ef350e4a739470f39"));
+                    Script.writeBytes(challengeBytes, Utils.HEX.decode("03a183d14e5acf94aa29c2a200c1bf3de571e83eb734d95bbae890cb3601f0c451"));
+                    Script.writeBytes(challengeBytes, Utils.HEX.decode("02b255a2efbcf1582855fa4d9bb4a5f677668ed910bef61e986b39cc8d3ebaf284"));
+                    challengeBytes.write(ScriptOpCodes.OP_3);
+                    challengeBytes.write(ScriptOpCodes.OP_CHECKMULTISIG);
+
+                    genesis.setChallenge(new Script(challengeBytes.toByteArray()));
+                } catch (Exception e) {
+                    // Cannot happen.
+                    throw new RuntimeException(e);
+                }
                 //checkState(genesis.getHashAsString().toLowerCase().equals("0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206"));
             }
             return genesis;
@@ -86,5 +131,6 @@ public class VtknTestNetParams extends AbstractBitcoinNetParams {
     public String getPaymentProtocolId() {
         return PAYMENT_PROTOCOL_ID_VTKNTESTNET;
     }
+
 
 }

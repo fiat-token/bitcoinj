@@ -23,6 +23,7 @@ import com.google.common.collect.*;
 import org.bitcoinj.script.*;
 import org.slf4j.*;
 import org.spongycastle.asn1.cmp.Challenge;
+import org.spongycastle.util.Arrays;
 
 import javax.annotation.*;
 import java.io.*;
@@ -44,7 +45,7 @@ import static org.bitcoinj.core.Sha256Hash.*;
  * 
  * <p>Instances of this class are not safe for use by multiple threads.</p>
  */
-class Block extends Message {
+public class Block extends Message {
     /**
      * Flags used to control which elements of block validation are done on
      * received blocks.
@@ -57,7 +58,9 @@ class Block extends Message {
     private static final Logger log = LoggerFactory.getLogger(Block.class);
 
     /** How many bytes are required to represent a block header WITHOUT the trailing 00 length byte. */
-    public static final int HEADER_SIZE = 80;
+    // dynamic header
+    public static final int DEFAULT_HEADER_SIZE = 80;
+
 
     static final long ALLOWED_TIME_DRIFT = 2 * 60 * 60; // Same value as Bitcoin Core.
 
@@ -101,8 +104,7 @@ class Block extends Message {
     // add signed block
     private long height;
     private Script challenge;
-    private ECKey.ECDSASignature signature;
-
+    private Script signature;
 
     // TODO: Get rid of all the direct accesses to this field. It's a long-since unnecessary holdover from the Dalvik days.
     /** If null, it means this object holds only the headers. */
@@ -120,7 +122,7 @@ class Block extends Message {
     protected int optimalEncodingMessageSize;
 
     /** Special case constructor, used for the genesis node, cloneAsHeader and unit tests. */
-    Block(NetworkParameters params, long setVersion) {
+    public Block(NetworkParameters params, long setVersion) {
         super(params);
         // Set up a few basic things. We are not complete after this though.
         version = setVersion;
@@ -128,10 +130,15 @@ class Block extends Message {
         time = System.currentTimeMillis() / 1000;
         prevBlockHash = Sha256Hash.ZERO_HASH;
         height = 0;
-        challenge = null;
-        signature = null;
+        byte[] empty = new byte[0];
+        challenge = new Script(empty);
+        signature = new Script(empty);
 
-        length = HEADER_SIZE;
+        length = getHeaderSize();
+    }
+
+    public int getHeaderSize(){
+        return DEFAULT_HEADER_SIZE+4+1+challenge.getProgram().length+1+signature.getProgram().length;
     }
 
     /**
@@ -203,7 +210,8 @@ class Block extends Message {
      * @param transactions List of transactions including the coinbase.
      */
     public Block(NetworkParameters params, long version, Sha256Hash prevBlockHash, Sha256Hash merkleRoot, long time,
-                 long difficultyTarget, long nonce, List<Transaction> transactions) {
+                 long difficultyTarget, long nonce, List<Transaction> transactions, long height, Script challenge,
+                 Script signature) {
         super(params);
         this.version = version;
         this.prevBlockHash = prevBlockHash;
@@ -213,12 +221,6 @@ class Block extends Message {
         this.nonce = nonce;
         this.transactions = new LinkedList<Transaction>();
         this.transactions.addAll(transactions);
-    }
-
-    public Block(NetworkParameters params, long version, Sha256Hash prevBlockHash, Sha256Hash merkleRoot, long time,
-                       long difficultyTarget, long nonce, List<Transaction> transactions, long height, Script challenge,
-                       ECKey.ECDSASignature signature) {
-        this(params,version,prevBlockHash,merkleRoot,time,difficultyTarget,nonce,transactions);
         this.height = height;
         this.challenge = challenge;
         this.signature = signature;
@@ -247,7 +249,7 @@ class Block extends Message {
      */
     protected void parseTransactions(final int transactionsOffset) throws ProtocolException {
         cursor = transactionsOffset;
-        optimalEncodingMessageSize = HEADER_SIZE;
+        optimalEncodingMessageSize = getHeaderSize();
         if (payload.length == cursor) {
             // This message is just a header, it has no transactions.
             transactionBytesValid = false;
@@ -278,19 +280,26 @@ class Block extends Message {
         time = readUint32();
         difficultyTarget = readUint32();
         nonce = readUint32();
+
+        // height
+        height = readUint32();
+
+        // proof challenge
+        long challengeLen = readVarInt();
+        byte[] challengeRaw = readBytes((int) challengeLen);
+        challenge = new Script(challengeRaw);
+
+        // Hash
         hash = Sha256Hash.wrapReversed(Sha256Hash.hashTwice(payload, offset, cursor - offset));
         headerBytesValid = serializer.isParseRetainMode();
 
-        // signed block
-        long len = readVarInt();
-        byte[] challangeRaw = readBytes((int) len);
-        challenge = new Script(challangeRaw);
-        len = readVarInt();
-        byte[] signatureRaw = readBytes((int) len);
-        signature = ECKey.ECDSASignature.decodeFromDER(signatureRaw);
+        // proof signature
+        long signatureLen = readVarInt();
+        byte[] signatureRaw = readBytes((int) signatureLen);
+        signature = new Script(signatureRaw);
 
         // transactions
-        parseTransactions(offset + HEADER_SIZE);
+        parseTransactions(offset + getHeaderSize());
         length = cursor - offset;
     }
     
@@ -304,8 +313,8 @@ class Block extends Message {
     // default for testing
     void writeHeader(OutputStream stream) throws IOException {
         // try for cached write first
-        if (headerBytesValid && payload != null && payload.length >= offset + HEADER_SIZE) {
-            stream.write(payload, offset, HEADER_SIZE);
+        if (headerBytesValid && payload != null && payload.length >= offset + getHeaderSize()) {
+            stream.write(payload, offset, getHeaderSize());
             return;
         }
         // fall back to manual write
@@ -316,10 +325,9 @@ class Block extends Message {
         Utils.uint32ToByteStreamLE(difficultyTarget, stream);
         Utils.uint32ToByteStreamLE(nonce, stream);
         Utils.uint32ToByteStreamLE(height, stream);
+        stream.write(challenge.getProgram().length);
         stream.write(challenge.getProgram());
-        // write signature lenght
-        stream.write(signature.encodeToDER().length);
-        stream.write(signature.encodeToDER());
+        //stream.write(signature.getProgram());
     }
 
     private void writeTransactions(OutputStream stream) throws IOException {
@@ -331,7 +339,7 @@ class Block extends Message {
 
         // confirmed we must have transactions either cached or as objects.
         if (transactionBytesValid && payload != null && payload.length >= offset + length) {
-            stream.write(payload, offset + HEADER_SIZE, length - HEADER_SIZE);
+            stream.write(payload, offset + getHeaderSize(), length - getHeaderSize());
             return;
         }
 
@@ -366,7 +374,7 @@ class Block extends Message {
 
         // At least one of the two cacheable components is invalid
         // so fall back to stream write since we can't be sure of the length.
-        ByteArrayOutputStream stream = new UnsafeByteArrayOutputStream(length == UNKNOWN_LENGTH ? HEADER_SIZE + guessTransactionsLength() : length);
+        ByteArrayOutputStream stream = new UnsafeByteArrayOutputStream(length == UNKNOWN_LENGTH ? getHeaderSize() + guessTransactionsLength() : length);
         try {
             writeHeader(stream);
             writeTransactions(stream);
@@ -393,7 +401,7 @@ class Block extends Message {
      */
     private int guessTransactionsLength() {
         if (transactionBytesValid)
-            return payload.length - HEADER_SIZE;
+            return payload.length - getHeaderSize();
         if (transactions == null)
             return 0;
         int len = VarInt.sizeOf(transactions.size());
@@ -436,7 +444,7 @@ class Block extends Message {
      */
     private Sha256Hash calculateHash() {
         try {
-            ByteArrayOutputStream bos = new UnsafeByteArrayOutputStream(HEADER_SIZE);
+            ByteArrayOutputStream bos = new UnsafeByteArrayOutputStream(getHeaderSize());
             writeHeader(bos);
             return Sha256Hash.wrapReversed(Sha256Hash.hashTwice(bos.toByteArray()));
         } catch (IOException e) {
@@ -513,6 +521,7 @@ class Block extends Message {
     public String toString() {
         StringBuilder s = new StringBuilder();
         s.append(" block: \n");
+        s.append("   length: ").append(getHeaderSize()).append('\n');
         s.append("   hash: ").append(getHashAsString()).append('\n');
         s.append("   version: ").append(version);
         String bips = Joiner.on(", ").skipNulls().join(isBIP34() ? "BIP34" : null, isBIP66() ? "BIP66" : null,
@@ -570,7 +579,7 @@ class Block extends Message {
     }
 
     /** Returns true if the hash of the block is OK (lower than difficulty target). */
-    protected boolean checkProofOfWork(boolean throwException) throws VerificationException {
+    /*protected boolean checkProofOfWork(boolean throwException) throws VerificationException {
         // This part is key - it is what proves the block was as difficult to make as it claims
         // to be. Note however that in the context of this function, the block can claim to be
         // as difficult as it wants to be .... if somebody was able to take control of our network
@@ -591,7 +600,33 @@ class Block extends Message {
                 return false;
         }
         return true;
+    }*/
+    protected boolean checkProofOfWork(boolean throwException) throws VerificationException {
+
+
+        byte[] raw = this.getSignature().getProgram();
+        byte[] buffer = new byte[raw.length - 2];
+        System.arraycopy(raw, 2, buffer, 0, raw.length - 2);
+        ECKey.ECDSASignature signature = ECKey.ECDSASignature.decodeFromDER(buffer);
+        if (signature == null) {
+            throw new VerificationException("no valid signature");
+        }
+
+        final Script script = this.getChallenge();
+        if(!script.isSentToMultiSig()){
+            throw new VerificationException("no valid challange");
+        }
+        final List<ECKey> pubKeys = script.getPubKeys();
+        for (ECKey current : pubKeys) {
+            final byte[] reverse = Arrays.reverse(this.getHash().getBytes());
+            final boolean verify = ECKey.verify(reverse, signature, current.getPubKey());
+            if (verify==true){
+                return true;
+            }
+        }
+        return false;
     }
+
 
     private void checkTimestamp() throws VerificationException {
         // Allow injection of a fake clock to allow unit testing.
@@ -1066,5 +1101,29 @@ class Block extends Message {
      */
     public boolean isBIP65() {
         return version >= BLOCK_VERSION_BIP65;
+    }
+
+    public void setHeight(long height) {
+        this.height = height;
+    }
+
+    public long getHeight() {
+        return height;
+    }
+
+    public void setSignature(Script signature) {
+        this.signature = signature;
+    }
+
+    public Script getSignature() {
+        return signature;
+    }
+
+    public void setChallenge(Script challenge) {
+        this.challenge = challenge;
+    }
+
+    public Script getChallenge() {
+        return challenge;
     }
 }

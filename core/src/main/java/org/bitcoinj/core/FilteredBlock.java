@@ -59,13 +59,13 @@ public class FilteredBlock extends Message {
 
     @Override
     protected void parse() throws ProtocolException {
-        byte[] headerBytes = new byte[Block.HEADER_SIZE];
-        System.arraycopy(payload, 0, headerBytes, 0, Block.HEADER_SIZE);
+        byte[] headerBytes = new byte[Block.DEFAULT_HEADER_SIZE];
+        System.arraycopy(payload, 0, headerBytes, 0, Block.DEFAULT_HEADER_SIZE);
         header = params.getDefaultSerializer().makeBlock(headerBytes);
         
-        merkleTree = new PartialMerkleTree(params, payload, Block.HEADER_SIZE);
+        merkleTree = new PartialMerkleTree(params, payload, Block.DEFAULT_HEADER_SIZE);
         
-        length = Block.HEADER_SIZE + merkleTree.getMessageSize();
+        length = Block.DEFAULT_HEADER_SIZE + merkleTree.getMessageSize();
     }
     
     /**
