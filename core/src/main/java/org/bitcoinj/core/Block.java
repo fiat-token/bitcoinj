@@ -22,6 +22,7 @@ import com.google.common.base.*;
 import com.google.common.collect.*;
 import org.bitcoinj.script.*;
 import org.slf4j.*;
+import org.spongycastle.asn1.cmp.Challenge;
 
 import javax.annotation.*;
 import java.io.*;
@@ -43,7 +44,7 @@ import static org.bitcoinj.core.Sha256Hash.*;
  * 
  * <p>Instances of this class are not safe for use by multiple threads.</p>
  */
-public class Block extends Message {
+class Block extends Message {
     /**
      * Flags used to control which elements of block validation are done on
      * received blocks.
@@ -97,12 +98,18 @@ public class Block extends Message {
     private long difficultyTarget; // "nBits"
     private long nonce;
 
+    // add signed block
+    private long height;
+    private Script challenge;
+    private ECKey.ECDSASignature signature;
+
+
     // TODO: Get rid of all the direct accesses to this field. It's a long-since unnecessary holdover from the Dalvik days.
     /** If null, it means this object holds only the headers. */
     @Nullable List<Transaction> transactions;
 
     /** Stores the hash of the block. If null, getHash() will recalculate it. */
-    private Sha256Hash hash;
+    protected Sha256Hash hash;
 
     protected boolean headerBytesValid;
     protected boolean transactionBytesValid;
@@ -120,6 +127,9 @@ public class Block extends Message {
         difficultyTarget = 0x1d07fff8L;
         time = System.currentTimeMillis() / 1000;
         prevBlockHash = Sha256Hash.ZERO_HASH;
+        height = 0;
+        challenge = null;
+        signature = null;
 
         length = HEADER_SIZE;
     }
@@ -205,6 +215,15 @@ public class Block extends Message {
         this.transactions.addAll(transactions);
     }
 
+    public Block(NetworkParameters params, long version, Sha256Hash prevBlockHash, Sha256Hash merkleRoot, long time,
+                       long difficultyTarget, long nonce, List<Transaction> transactions, long height, Script challenge,
+                       ECKey.ECDSASignature signature) {
+        this(params,version,prevBlockHash,merkleRoot,time,difficultyTarget,nonce,transactions);
+        this.height = height;
+        this.challenge = challenge;
+        this.signature = signature;
+    }
+
 
     /**
      * <p>A utility method that calculates how much new Bitcoin would be created by the block at the given height.
@@ -262,6 +281,14 @@ public class Block extends Message {
         hash = Sha256Hash.wrapReversed(Sha256Hash.hashTwice(payload, offset, cursor - offset));
         headerBytesValid = serializer.isParseRetainMode();
 
+        // signed block
+        long len = readVarInt();
+        byte[] challangeRaw = readBytes((int) len);
+        challenge = new Script(challangeRaw);
+        len = readVarInt();
+        byte[] signatureRaw = readBytes((int) len);
+        signature = ECKey.ECDSASignature.decodeFromDER(signatureRaw);
+
         // transactions
         parseTransactions(offset + HEADER_SIZE);
         length = cursor - offset;
@@ -288,6 +315,11 @@ public class Block extends Message {
         Utils.uint32ToByteStreamLE(time, stream);
         Utils.uint32ToByteStreamLE(difficultyTarget, stream);
         Utils.uint32ToByteStreamLE(nonce, stream);
+        Utils.uint32ToByteStreamLE(height, stream);
+        stream.write(challenge.getProgram());
+        // write signature lenght
+        stream.write(signature.encodeToDER().length);
+        stream.write(signature.encodeToDER());
     }
 
     private void writeTransactions(OutputStream stream) throws IOException {
@@ -468,6 +500,9 @@ public class Block extends Message {
         block.difficultyTarget = difficultyTarget;
         block.transactions = null;
         block.hash = getHash();
+        block.height = height;
+        block.challenge = challenge;
+        block.signature = signature;
     }
 
     /**
@@ -489,7 +524,9 @@ public class Block extends Message {
         s.append("   merkle root: ").append(getMerkleRoot()).append("\n");
         s.append("   time: ").append(time).append(" (").append(Utils.dateTimeFormat(time * 1000)).append(")\n");
         s.append("   difficulty target (nBits): ").append(difficultyTarget).append("\n");
-        s.append("   nonce: ").append(nonce).append("\n");
+        s.append("   nonce: ").append(nonce).append("\n"); s.append("   height: ").append(height).append("\n");
+        s.append("   challenge: ").append(challenge).append("\n");
+        s.append("   signature: ").append(signature).append("\n");
         if (transactions != null && transactions.size() > 0) {
             s.append("   with ").append(transactions.size()).append(" transaction(s):\n");
             for (Transaction tx : transactions) {
@@ -906,7 +943,7 @@ public class Block extends Message {
     /**
      * Returns a solved block that builds on top of this one. This exists for unit tests.
      * In this variant you can specify a public key (pubkey) for use in generating coinbase blocks.
-     * 
+     *
      * @param height block height, if known, or -1 otherwise.
      */
     Block createNextBlock(@Nullable final Address to, final long version,
