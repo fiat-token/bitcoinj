@@ -26,12 +26,16 @@ import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.params.VtknTestNetParams;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.store.BlockStore;
+import org.bitcoinj.store.BlockStoreException;
 import org.bitcoinj.store.MemoryBlockStore;
+import org.bitcoinj.store.SPVBlockStore;
 import org.bitcoinj.utils.BriefLogFormatter;
 import org.spongycastle.util.Arrays;
 
 import javax.annotation.Nullable;
 import javax.xml.bind.DatatypeConverter;
+import java.io.File;
+import java.io.InputStream;
 import java.lang.reflect.Array;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -47,14 +51,14 @@ public class VtknTest {
 
 
     public static final String[] DNSPEERS = {
-            //"test.signer1.eternitywall.com",
-            "test.signer2.eternitywall.com"
+            "test.signer1.eternitywall.com",
+            //"test.signer2.eternitywall.com"
     };
     public static NetworkParameters NETWORK_PARAMETERS = VtknTestNetParams.get();
 /*
     public static final String[] DNSPEERS = {
             "relay1.eternitywall.com",
-            "relay2.eternitywall.com",
+            "relay2.eternitywall.comm",
             "relay3.eternitywall.com",
             "relay4.eternitywall.com"
     };
@@ -65,7 +69,7 @@ public class VtknTest {
 
 
     static PeerGroup peerGroup;
-    static BlockStore blockStore;
+    static SPVBlockStore blockStore;
     static BlockChain blockChain;
 
     public static void main(String[] args) throws Exception {
@@ -106,23 +110,70 @@ public class VtknTest {
     public static void checkConnection() throws Exception {
         System.out.println("Connecting to node");
 
-        blockStore = new MemoryBlockStore(NETWORK_PARAMETERS);
-        blockChain = new BlockChain(NETWORK_PARAMETERS, blockStore);
 
         peerGroup = setupNetwork();
         peerGroup.start();
 
-        MyDownload myDownload = new MyDownload();
-        peerGroup.startBlockChainDownload(myDownload);
-
         // check blocks from peer
-        peerGroup.waitForPeers(1).get();
+        /*peerGroup.waitForPeers(1).get();
         Peer peer = peerGroup.getConnectedPeers().get(0);
         Sha256Hash blockHash = NETWORK_PARAMETERS.getGenesisBlock().getHash();;
         Future<Block> future = peer.getBlock(blockHash);
         System.out.println("Waiting for node to send us the requested block: " + blockHash);
         Block block = future.get();
-        System.out.println(block);
+        System.out.println(block);*/
+
+
+
+
+
+        // check blockstore
+
+        File blockChainFile = new File("wallet.dat");
+        final boolean blockChainFileExists = blockChainFile.exists();
+        if (!blockChainFileExists) {
+            System.out.println("blockchain does not exist, resetting wallet");
+        }
+
+
+        //blockStore = new MemoryBlockStore(NETWORK_PARAMETERS);
+        //blockChain = new BlockChain(NETWORK_PARAMETERS, blockStore);
+
+        try {
+            blockStore = new SPVBlockStore(NETWORK_PARAMETERS, blockChainFile);
+            //blockStore.getChainHead(); // detect corruptions as early as possible
+
+            /*final long earliestKeyCreationTime = wallet.getEarliestKeyCreationTime();
+
+            if (!blockChainFileExists && earliestKeyCreationTime > 0) {
+                try {
+                    final InputStream checkpointsInputStream = getAssets().open(Constants.Files.CHECKPOINTS_FILENAME);
+                    CheckpointManager.checkpoint(Constants.NETWORK_PARAMETERS, checkpointsInputStream, blockStore,
+                            earliestKeyCreationTime);
+                    watch.stop();
+                    log.info("checkpoints loaded from '{}', took {}", Constants.Files.CHECKPOINTS_FILENAME, watch);
+                } catch (final IOException x) {
+                    log.error("problem reading checkpoints, continuing without", x);
+                }
+            }*/
+        } catch (final BlockStoreException x) {
+            blockChainFile.delete();
+            final String msg = "blockstore cannot be created";
+            throw new Error(msg, x);
+        }
+
+        try {
+            blockChain = new BlockChain(NETWORK_PARAMETERS, blockStore);
+        } catch (final BlockStoreException x) {
+            throw new Error("blockchain cannot be created", x);
+        }
+
+
+
+        MyDownload myDownload = new MyDownload();
+        peerGroup.startBlockChainDownload(myDownload);
+
+        Thread.sleep(60*    1000);
     }
 
 

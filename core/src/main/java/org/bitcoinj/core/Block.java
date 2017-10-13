@@ -59,7 +59,7 @@ public class Block extends Message {
 
     /** How many bytes are required to represent a block header WITHOUT the trailing 00 length byte. */
     // dynamic header
-    public static final int DEFAULT_HEADER_SIZE = 80;
+    public static final int DEFAULT_HEADER_SIZE = 80+4+3*34+3;
 
 
     static final long ALLOWED_TIME_DRIFT = 2 * 60 * 60; // Same value as Bitcoin Core.
@@ -138,7 +138,10 @@ public class Block extends Message {
     }
 
     public int getHeaderSize(){
-        return DEFAULT_HEADER_SIZE+4+1+challenge.getProgram().length+1+signature.getProgram().length;
+        return DEFAULT_HEADER_SIZE+//+4+1+
+                ///((challenge!=null)?challenge.getProgram().length:0) +
+                1+
+                ((signature!=null)?signature.getProgram().length:0);
     }
 
     /**
@@ -281,26 +284,32 @@ public class Block extends Message {
         difficultyTarget = readUint32();
         nonce = readUint32();
 
-        // height
-        height = readUint32();
+        try {
+            // height
+            height = readUint32();
 
-        // proof challenge
-        long challengeLen = readVarInt();
-        byte[] challengeRaw = readBytes((int) challengeLen);
-        challenge = new Script(challengeRaw);
+            // proof challenge
+            long challengeLen = readVarInt();
+            byte[] challengeRaw = readBytes((int) challengeLen);
+            challenge = new Script(challengeRaw);
 
-        // Hash
-        hash = Sha256Hash.wrapReversed(Sha256Hash.hashTwice(payload, offset, cursor - offset));
-        headerBytesValid = serializer.isParseRetainMode();
+            // Hash
+            hash = Sha256Hash.wrapReversed(Sha256Hash.hashTwice(payload, offset, cursor - offset));
+            headerBytesValid = serializer.isParseRetainMode();
 
-        // proof signature
-        long signatureLen = readVarInt();
-        byte[] signatureRaw = readBytes((int) signatureLen);
-        signature = new Script(signatureRaw);
+            if (height > 0){
+                // proof signature
+                long signatureLen = readVarInt();
+                byte[] signatureRaw = readBytes((int) signatureLen);
+                signature = new Script(signatureRaw);
+            }
 
-        // transactions
-        parseTransactions(offset + getHeaderSize());
-        length = cursor - offset;
+            // transactions
+            parseTransactions(offset + getHeaderSize());
+            length = cursor - offset;
+        } catch (Exception e){
+            e.printStackTrace();
+        }
     }
     
     public int getOptimalEncodingMessageSize() {
