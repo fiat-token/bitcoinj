@@ -41,8 +41,9 @@ public class VtknTestNetParams extends AbstractBitcoinNetParams {
         packetMagic = 0x110a034eL;
         //port = 9045;
         port = 18444;
-        addressHeader = 111;
-        p2shHeader = 196;
+        addressHeader = 65; // start with T
+        p2shHeader = 58; // start with Q
+
         acceptableAddressCodes = new int[] { addressHeader, p2shHeader };
         interval = INTERVAL;
         targetTimespan = TARGET_TIMESPAN;
@@ -53,6 +54,7 @@ public class VtknTestNetParams extends AbstractBitcoinNetParams {
         genesisBlock.setNonce(100);
         spendableCoinbaseDepth = 100;
         subsidyDecreaseBlockCount = 210000;
+
 
         String genesisHash = genesisBlock.getHashAsString();
         //checkState(genesisHash.equals("00000007199508e34a9ff81e6ec0c477a4cccff2a4767a8eee39c11db367b008"));
