@@ -49,13 +49,14 @@ import java.util.concurrent.Future;
  */
 public class VtknTest {
 
-
+/*
     public static final String[] DNSPEERS = {
-            "test.signer1.eternitywall.com",
-            //"test.signer2.eternitywall.com"
+            //"test.signer1.eternitywall.com",
+            "test.signer2.eternitywall.com"
     };
     public static NetworkParameters NETWORK_PARAMETERS = VtknTestNetParams.get();
-/*
+*/
+
     public static final String[] DNSPEERS = {
             "relay1.eternitywall.com",
             "relay2.eternitywall.comm",
@@ -63,13 +64,13 @@ public class VtknTest {
             "relay4.eternitywall.com"
     };
     public static NetworkParameters NETWORK_PARAMETERS = RegTestParams.get();
-*/
+
     public static final int PEER_DISCOVERY_TIMEOUT_MS = 10 * (int) 1000;
     public static final int PEER_TIMEOUT_MS = 15 * (int) 1000;
 
 
     static PeerGroup peerGroup;
-    static SPVBlockStore blockStore;
+    static BlockStore blockStore;
     static BlockChain blockChain;
 
     public static void main(String[] args) throws Exception {
@@ -78,8 +79,19 @@ public class VtknTest {
 
         checkConnection();
 
+        peerGroup = setupNetwork();
+
+        //peerGroup.start();
+        //peerGroup.waitForPeers(1);
+
+        checkSPVBlockStore();
+
+
+
         Thread.sleep(60*1000);
         closeNetwork();
+
+
     }
 
     public static void checkGenesis(){
@@ -107,29 +119,29 @@ public class VtknTest {
             System.out.println("Verify " + verify);
         }
     }
-    public static void checkConnection() throws Exception {
-        System.out.println("Connecting to node");
+
+    public static void checkMemoryBlockStore(){
+
+        blockStore = new MemoryBlockStore(NETWORK_PARAMETERS);
+        try {
+            blockStore.getChainHead(); // detect corruptions as early as pos
+        } catch (BlockStoreException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            blockChain = new BlockChain(NETWORK_PARAMETERS, blockStore);
+        } catch (final BlockStoreException x) {
+            throw new Error("blockchain cannot be created", x);
+        }
 
 
-        peerGroup = setupNetwork();
-        peerGroup.start();
+    }
 
-        // check blocks from peer
-        /*peerGroup.waitForPeers(1).get();
-        Peer peer = peerGroup.getConnectedPeers().get(0);
-        Sha256Hash blockHash = NETWORK_PARAMETERS.getGenesisBlock().getHash();;
-        Future<Block> future = peer.getBlock(blockHash);
-        System.out.println("Waiting for node to send us the requested block: " + blockHash);
-        Block block = future.get();
-        System.out.println(block);*/
-
-
-
-
-
-        // check blockstore
+    public static void checkSPVBlockStore(){
 
         File blockChainFile = new File("wallet.dat");
+        blockChainFile.delete();
         final boolean blockChainFileExists = blockChainFile.exists();
         if (!blockChainFileExists) {
             System.out.println("blockchain does not exist, resetting wallet");
@@ -169,11 +181,31 @@ public class VtknTest {
         }
 
 
+    }
+    public static void checkConnection() throws Exception {
+        System.out.println("Connecting to node");
 
-        MyDownload myDownload = new MyDownload();
-        peerGroup.startBlockChainDownload(myDownload);
 
-        Thread.sleep(60*    1000);
+
+        // check blocks from peer
+        /*peerGroup.waitForPeers(1).get();
+        Peer peer = peerGroup.getConnectedPeers().get(0);
+        Sha256Hash blockHash = NETWORK_PARAMETERS.getGenesisBlock().getHash();;
+        Future<Block> future = peer.getBlock(blockHash);
+        System.out.println("Waiting for node to send us the requested block: " + blockHash);
+        Block block = future.get();
+        System.out.println(block);*/
+
+
+
+
+
+        // check blockstore
+
+
+        //MyDownload myDownload = new MyDownload();
+        //peerGroup.startBlockChainDownload(myDownload);
+
     }
 
 
