@@ -41,22 +41,24 @@ public class VtknTestNetParams extends AbstractBitcoinNetParams {
         packetMagic = 0x110a034eL;
         //port = 9045;
         port = 18444;
+
+        // base58Prefixes
         addressHeader = 65; // start with T
         p2shHeader = 58; // start with Q
-
+        dumpedPrivateKeyHeader = 172; // AC
         acceptableAddressCodes = new int[] { addressHeader, p2shHeader };
+
+        // time & interval
         interval = INTERVAL;
         targetTimespan = TARGET_TIMESPAN;
         maxTarget = Utils.decodeCompactBits(0x207fFFFFL);
-        dumpedPrivateKeyHeader = 239;
-        genesisBlock.setTime(1504224000L);
-        genesisBlock.setDifficultyTarget(0x207fFFFFL);
-        genesisBlock.setNonce(100);
-        spendableCoinbaseDepth = 100;
+
+        // genesis
+        genesisBlock = getGenesisBlock();
+
+        spendableCoinbaseDepth = 0;
         subsidyDecreaseBlockCount = 210000;
 
-
-        String genesisHash = genesisBlock.getHashAsString();
         //checkState(genesisHash.equals("00000007199508e34a9ff81e6ec0c477a4cccff2a4767a8eee39c11db367b008"));
         dnsSeeds = null;
         addrSeeds = null;
