@@ -59,7 +59,7 @@ public class Block extends Message {
 
     /** How many bytes are required to represent a block header WITHOUT the trailing 00 length byte. */
     // dynamic header
-    public static final int DEFAULT_HEADER_SIZE = 80+4+3*34+3;
+    public static final int DEFAULT_HEADER_SIZE = 80+4+1+(3*34+3);
 
 
     static final long ALLOWED_TIME_DRIFT = 2 * 60 * 60; // Same value as Bitcoin Core.
