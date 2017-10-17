@@ -22,13 +22,16 @@ import org.bitcoinj.core.listeners.*;
 import org.bitcoinj.net.discovery.DnsDiscovery;
 import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.params.RegTestParams;
+import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.store.BlockStore;
 import org.bitcoinj.store.BlockStoreException;
 import org.bitcoinj.store.MemoryBlockStore;
 import org.bitcoinj.store.SPVBlockStore;
 import org.bitcoinj.utils.BriefLogFormatter;
+import org.bitcoinj.wallet.Wallet;
 import org.spongycastle.util.Arrays;
+import sun.applet.Main;
 
 import javax.annotation.Nullable;
 import javax.xml.bind.DatatypeConverter;
@@ -47,21 +50,13 @@ import java.util.concurrent.Future;
  */
 public class VtknTest {
 
-/*
-    public static final String[] DNSPEERS = {
-            //"test.signer1.eternitywall.com",
-            "test.signer2.eternitywall.com"
-    };
-    public static NetworkParameters NETWORK_PARAMETERS = VtknTestNetParams.get();
-*/
-
     public static final String[] DNSPEERS = {
             "relay1.eternitywall.com",
-            "relay2.eternitywall.comm",
+            "relay2.eternitywall.com",
             "relay3.eternitywall.com",
             "relay4.eternitywall.com"
     };
-    public static NetworkParameters NETWORK_PARAMETERS = RegTestParams.get();
+    public static NetworkParameters NETWORK_PARAMETERS = NetworkParameters.regTests();
 
     public static final int PEER_DISCOVERY_TIMEOUT_MS = 10 * (int) 1000;
     public static final int PEER_TIMEOUT_MS = 15 * (int) 1000;
@@ -70,56 +65,23 @@ public class VtknTest {
     static PeerGroup peerGroup;
     static BlockStore blockStore;
     static BlockChain blockChain;
+    static Wallet wallet;
+    static ECKey ecKey;
 
     public static void main(String[] args) throws Exception {
 
         BriefLogFormatter.init();
+        //Context.propagate(new Context(NETWORK_PARAMETERS, 100, Coin.ZERO, false));
 
-        checkConnection();
-
-        peerGroup = setupNetwork();
-
-        peerGroup.start();
-        peerGroup.waitForPeers(1);
-
-        checkSPVBlockStore();
-
-
-
-        Thread.sleep(60*1000);
-        closeNetwork();
-
-
-    }
-
-    public static void checkGenesis(){
+        // print genesis
+        System.out.println("genesis");
         System.out.println(NETWORK_PARAMETERS.getGenesisBlock().toString());
-    }
 
-    public static void checkBlock(){
-        /*byte[] genesis = DatatypeConverter.parseHexBinary("00000020d116864d883055de54c7228cd16a6d506b7c10b2afa84d5a4f07772ae639514ec3ab4a1f8bb06e668928f34feadb0454d02f79757337eec1bd59d3f3f239370c9341de59ffff001d0000000004000000695121029c2ddd78a0f95f4e787554bfb4f74b2d7dcf40f79f443e5ef350e4a739470f392103a183d14e5acf94aa29c2a200c1bf3de571e83eb734d95bbae890cb3601f0c4512102b255a2efbcf1582855fa4d9bb4a5f677668ed910bef61e986b39cc8d3ebaf28453ae48004630440220291532acc6ee849d9a4f94aa743ab5e42ccc73592e8f19d1aa6b40d4061bfc410220110dca34c0908637002c19585c191efe450e1c276604d1e6720e827b206726c5");
-        Block block = new Block(NETWORK_PARAMETERS,genesis);
-        System.out.println(block.toString());
-        System.out.println(block.getHash().toString());
+        // build wallet & key
+        wallet = new Wallet(NETWORK_PARAMETERS);
+        ecKey = wallet.currentReceiveKey();
 
-        byte[] raw = block.getSignature().getProgram();
-        byte[] buffer = new byte[raw.length-2];
-        System.arraycopy(raw,2,buffer,0,raw.length-2);
-        ECKey.ECDSASignature signature = ECKey.ECDSASignature.decodeFromDER(buffer);
-        System.out.println(signature.toString());
-
-        final Script script = block.getChallenge();
-        final List<ECKey> pubKeys = script.getPubKeys();
-        for(ECKey current : pubKeys) {
-            System.out.println("Current " + current.getPublicKeyAsHex());
-            final byte[] reverse = Arrays.reverse(block.getHash().getBytes());
-            final boolean verify = ECKey.verify(reverse, signature, current.getPubKey());
-            System.out.println("Verify " + verify);
-        }*/
-    }
-
-    public static void checkMemoryBlockStore(){
-
+        // blockstorage
         blockStore = new MemoryBlockStore(NETWORK_PARAMETERS);
         try {
             blockStore.getChainHead(); // detect corruptions as early as pos
@@ -127,16 +89,47 @@ public class VtknTest {
             e.printStackTrace();
         }
 
+        // blockchain
         try {
             blockChain = new BlockChain(NETWORK_PARAMETERS, blockStore);
         } catch (final BlockStoreException x) {
             throw new Error("blockchain cannot be created", x);
         }
 
+        // peergroup
+        PeerGroup peerGroup = new PeerGroup(NETWORK_PARAMETERS, blockChain);
+        peerGroup.setUserAgent("PeerMonitor", "1.0");
+        peerGroup.setMaxConnections(2);
+        //peerGroup.setMaxPeersToDiscoverCount(0);
+        peerGroup.addConnectedEventListener(peerConnectedEventListener);
+        peerGroup.addDisconnectedEventListener(peerDisconnectedEventListener);
+
+        // peergroup connection
+        for(InetAddress peer : getPeerAddresses()){
+            try {
+                if (peer==null) {
+                    throw new Exception(peer.getHostAddress());
+                }
+                peerGroup.addAddress(new PeerAddress(NETWORK_PARAMETERS, peer, NETWORK_PARAMETERS.getPort()));
+            }catch (Exception e){
+                e.printStackTrace();
+                System.out.println("exception on dnsres " + e.getMessage());
+            }
+        }
+
+        //start
+        MyDownload myDownload = new MyDownload();
+        peerGroup.startBlockChainDownload(myDownload);
+        peerGroup.start();
+
+        Thread.sleep(60*1000);
+        closeNetwork();
+
 
     }
 
-    public static void checkSPVBlockStore(){
+
+    public static SPVBlockStore getSPVBlockStore(){
 
         File blockChainFile = new File("wallet.dat");
         blockChainFile.delete();
@@ -145,12 +138,8 @@ public class VtknTest {
             System.out.println("blockchain does not exist, resetting wallet");
         }
 
-
-        //blockStore = new MemoryBlockStore(NETWORK_PARAMETERS);
-        //blockChain = new BlockChain(NETWORK_PARAMETERS, blockStore);
-
         try {
-            blockStore = new SPVBlockStore(NETWORK_PARAMETERS, blockChainFile);
+            SPVBlockStore blockStore = new SPVBlockStore(NETWORK_PARAMETERS, blockChainFile);
             //blockStore.getChainHead(); // detect corruptions as early as possible
 
             /*final long earliestKeyCreationTime = wallet.getEarliestKeyCreationTime();
@@ -166,43 +155,12 @@ public class VtknTest {
                     log.error("problem reading checkpoints, continuing without", x);
                 }
             }*/
+            return blockStore;
         } catch (final BlockStoreException x) {
             blockChainFile.delete();
             final String msg = "blockstore cannot be created";
             throw new Error(msg, x);
         }
-
-        try {
-            blockChain = new BlockChain(NETWORK_PARAMETERS, blockStore);
-        } catch (final BlockStoreException x) {
-            throw new Error("blockchain cannot be created", x);
-        }
-
-
-    }
-    public static void checkConnection() throws Exception {
-        System.out.println("Connecting to node");
-
-
-
-        // check blocks from peer
-        /*peerGroup.waitForPeers(1).get();
-        Peer peer = peerGroup.getConnectedPeers().get(0);
-        Sha256Hash blockHash = NETWORK_PARAMETERS.getGenesisBlock().getHash();;
-        Future<Block> future = peer.getBlock(blockHash);
-        System.out.println("Waiting for node to send us the requested block: " + blockHash);
-        Block block = future.get();
-        System.out.println(block);*/
-
-
-
-
-
-        // check blockstore
-
-
-        //MyDownload myDownload = new MyDownload();
-        //peerGroup.startBlockChainDownload(myDownload);
 
     }
 
@@ -267,19 +225,7 @@ public class VtknTest {
         peerGroup.stop();
     }
 
-    private static PeerGroup setupNetwork() throws InterruptedException, ExecutionException {
-        PeerGroup peerGroup = new PeerGroup(NETWORK_PARAMETERS, blockChain /* no chain */);
-        peerGroup.setUserAgent("PeerMonitor", "1.0");
-        peerGroup.setMaxConnections(4);
-        peerGroup.setDownloadTxDependencies(0); // recursive implementation causes StackOverflowError
-        peerGroup.setMinBroadcastConnections(1);
-        peerGroup.setMaxConnections(DNSPEERS.length);
-        peerGroup.setConnectTimeoutMillis(PEER_TIMEOUT_MS);
-        peerGroup.setPeerDiscoveryTimeoutMillis(PEER_DISCOVERY_TIMEOUT_MS);
-        peerGroup.setMaxPeersToDiscoverCount(1);
-
-        peerGroup.addConnectedEventListener(peerConnectedEventListener);
-        peerGroup.addDisconnectedEventListener(peerDisconnectedEventListener);
+    private static List<InetAddress> getPeerAddresses() throws InterruptedException, ExecutionException {
 
         // Resolve InetAddress of the peers
         final List<InetAddress> peers = new ArrayList<>();
@@ -307,19 +253,8 @@ public class VtknTest {
         }
         System.out.println("Thread finishing");
 
-        for(InetAddress peer : peers){
-            try {
-                if (peer==null) {
-                    throw new Exception("");
-                }
-                peerGroup.addAddress(new PeerAddress(NETWORK_PARAMETERS, peer, NETWORK_PARAMETERS.getPort()));
-            }catch (Exception e){
-                e.printStackTrace();
-                System.out.println("exception on dnsres " + e);
-            }
-        }
 
-        return peerGroup;
+        return peers;
 
     }
 
