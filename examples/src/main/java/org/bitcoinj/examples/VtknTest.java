@@ -49,21 +49,11 @@ import java.util.concurrent.Future;
  */
 public class VtknTest {
 
-/*
     public static final String[] DNSPEERS = {
             //"test.signer1.eternitywall.com",
             "test.signer2.eternitywall.com"
     };
     public static NetworkParameters NETWORK_PARAMETERS = VtknTestNetParams.get();
-*/
-
-    public static final String[] DNSPEERS = {
-            "relay1.eternitywall.com",
-            "relay2.eternitywall.comm",
-            "relay3.eternitywall.com",
-            "relay4.eternitywall.com"
-    };
-    public static NetworkParameters NETWORK_PARAMETERS = RegTestParams.get();
 
     public static final int PEER_DISCOVERY_TIMEOUT_MS = 10 * (int) 1000;
     public static final int PEER_TIMEOUT_MS = 15 * (int) 1000;
@@ -81,12 +71,13 @@ public class VtknTest {
 
         peerGroup = setupNetwork();
 
-        //peerGroup.start();
+
+        checkMemoryBlockStore();
+
+        MyDownload myDownload = new MyDownload();
+        peerGroup.startBlockChainDownload(myDownload);
+        peerGroup.start();
         //peerGroup.waitForPeers(1);
-
-        checkSPVBlockStore();
-
-
 
         Thread.sleep(60*1000);
         closeNetwork();
@@ -184,9 +175,6 @@ public class VtknTest {
     }
     public static void checkConnection() throws Exception {
         System.out.println("Connecting to node");
-
-
-
         // check blocks from peer
         /*peerGroup.waitForPeers(1).get();
         Peer peer = peerGroup.getConnectedPeers().get(0);
@@ -195,17 +183,7 @@ public class VtknTest {
         System.out.println("Waiting for node to send us the requested block: " + blockHash);
         Block block = future.get();
         System.out.println(block);*/
-
-
-
-
-
         // check blockstore
-
-
-        //MyDownload myDownload = new MyDownload();
-        //peerGroup.startBlockChainDownload(myDownload);
-
     }
 
 
