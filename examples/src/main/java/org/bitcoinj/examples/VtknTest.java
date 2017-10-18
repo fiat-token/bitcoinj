@@ -80,16 +80,17 @@ public class VtknTest {
         ecKey = wallet.currentReceiveKey();
 
         // blockstorage
-        blockStore = new MemoryBlockStore(NETWORK_PARAMETERS);
+        /*blockStore = new MemoryBlockStore(NETWORK_PARAMETERS);
         try {
             blockStore.getChainHead(); // detect corruptions as early as pos
         } catch (BlockStoreException e) {
             e.printStackTrace();
-        }
+        }*/
+        blockStore = getSPVBlockStore();
 
         // blockchain
         try {
-            blockChain = new BlockChain(NETWORK_PARAMETERS, blockStore);
+            blockChain = new BlockChain(NETWORK_PARAMETERS, wallet, blockStore);
         } catch (final BlockStoreException x) {
             throw new Error("blockchain cannot be created", x);
         }
@@ -121,6 +122,25 @@ public class VtknTest {
         peerGroup.startBlockChainDownload(myDownload);
         peerGroup.start();
 
+        // wait
+        Thread.sleep(3*1000);
+
+        // get block from peer: f53b2e79aba3d064e0bbc9cc9daf0f0436bd937a1bd95b8959ffb0b5905e56cf
+        peerGroup.waitForPeers(1).get();
+        Peer peer = peerGroup.getConnectedPeers().get(0);
+        Sha256Hash blockHash = Sha256Hash.wrap("f53b2e79aba3d064e0bbc9cc9daf0f0436bd937a1bd95b8959ffb0b5905e56cf");
+        Future<Block> future = peer.getBlock(blockHash);
+        System.out.println("Waiting for node to send us the requested block: " + blockHash);
+        Block block = future.get();
+        System.out.println("Block from peer : "+blockHash.toString());
+        System.out.println(block);
+
+        // get block from blockstore
+        System.out.println("Block from blockStore : "+blockHash.toString());
+        StoredBlock storedBlock = blockStore.get(blockHash);
+        System.out.println(storedBlock.getHeader());
+
+        // wait
         Thread.sleep(60*1000);
         closeNetwork();
     }
@@ -151,6 +171,7 @@ public class VtknTest {
 
         File blockChainFile = new File("wallet.dat");
         blockChainFile.delete();
+        blockChainFile = new File("wallet.dat");
         final boolean blockChainFileExists = blockChainFile.exists();
         if (!blockChainFileExists) {
             System.out.println("blockchain does not exist, resetting wallet");
