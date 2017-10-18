@@ -34,13 +34,13 @@ public class VtknTestNetParams extends AbstractBitcoinNetParams {
     public static final int VTKNTESTNET_MAJORITY_WINDOW = 100;
     public static final int VTKNTESTNET_MAJORITY_REJECT_BLOCK_OUTDATED = 75;
     public static final int VTKNTESTNET_MAJORITY_ENFORCE_BLOCK_UPGRADE = 51;
+    private static final String VTKN_SCHEME = "vtkn";
 
     public VtknTestNetParams() {
         super();
         id = ID_VTKNTESTNET;
         packetMagic = 0x110a034eL;
-        //port = 9045;
-        port = 18444;
+        port = 9045;
 
         // base58Prefixes
         addressHeader = 65; // start with T
@@ -136,5 +136,9 @@ public class VtknTestNetParams extends AbstractBitcoinNetParams {
         return PAYMENT_PROTOCOL_ID_VTKNTESTNET;
     }
 
+    @Override
+    public String getUriScheme() {
+        return VTKN_SCHEME;
+    }
 
 }
