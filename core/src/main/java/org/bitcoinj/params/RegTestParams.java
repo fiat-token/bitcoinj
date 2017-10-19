@@ -27,6 +27,7 @@ import static com.google.common.base.Preconditions.checkState;
  */
 public class RegTestParams extends TestNet2Params {
     private static final BigInteger MAX_TARGET = new BigInteger("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16);
+    private static final String VTKN_SCHEME = "vtkn";
 
     public RegTestParams() {
         super();
@@ -75,5 +76,10 @@ public class RegTestParams extends TestNet2Params {
     @Override
     public String getPaymentProtocolId() {
         return PAYMENT_PROTOCOL_ID_REGTEST;
+    }
+
+    @Override
+    public String getUriScheme() {
+        return VTKN_SCHEME;
     }
 }
