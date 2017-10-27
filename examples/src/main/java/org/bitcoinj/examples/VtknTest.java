@@ -20,10 +20,7 @@ package org.bitcoinj.examples;
 import org.bitcoinj.core.*;
 import org.bitcoinj.core.listeners.*;
 import org.bitcoinj.net.discovery.DnsDiscovery;
-import org.bitcoinj.params.MainNetParams;
-import org.bitcoinj.params.RegTestParams;
-import org.bitcoinj.params.TestNet3Params;
-import org.bitcoinj.params.VtknTestNetParams;
+import org.bitcoinj.params.*;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.store.BlockStore;
 import org.bitcoinj.store.BlockStoreException;
@@ -50,11 +47,17 @@ import java.util.concurrent.Future;
  */
 public class VtknTest {
 
-    public static final String[] DNSPEERS = {
+    /*public static final String[] DNSPEERS = {
             "test.signer1.eternitywall.com",
             "test.signer2.eternitywall.com"
     };
     public static NetworkParameters NETWORK_PARAMETERS = VtknTestNetParams.get();
+*/
+    public static final String[] DNSPEERS = {
+            "test.signer1.eternitywall.com",
+            "test.signer2.eternitywall.com"
+    };
+    public static NetworkParameters NETWORK_PARAMETERS = VtknNetParams.get();
 
     public static final int PEER_DISCOVERY_TIMEOUT_MS = 10 * (int) 1000;
     public static final int PEER_TIMEOUT_MS = 15 * (int) 1000;
