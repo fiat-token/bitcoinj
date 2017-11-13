@@ -43,9 +43,9 @@ public class VtknTestNetParams extends AbstractBitcoinNetParams {
         port = 9045;
 
         // base58Prefixes
-        addressHeader = 65; // start with T
-        p2shHeader = 58; // start with Q
-        dumpedPrivateKeyHeader = 172; // AC
+        addressHeader = 111; // start with 'm' or 'n'
+        p2shHeader = 196; // start with 2
+        dumpedPrivateKeyHeader = 239; // EF
         acceptableAddressCodes = new int[] { addressHeader, p2shHeader };
 
         // time & interval
