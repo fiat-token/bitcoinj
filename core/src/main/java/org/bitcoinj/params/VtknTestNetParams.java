@@ -87,16 +87,16 @@ public class VtknTestNetParams extends AbstractBitcoinNetParams {
                 genesis = new Block(this, Block.BLOCK_VERSION_GENESIS);
                 genesis.setNonce(100);
                 genesis.setDifficultyTarget(0x207fFFFFL);
-                genesis.setTime(1504224000L);
+                genesis.setTime(1510768800L);
 
                 Transaction t = new Transaction(this);
                 try {
                     // A script containing the difficulty bits and the following message:
                     //
-                    //   "Virtual Token birth"
+                    //   "Lo choc per gli Azzurri fuori dai Mondiali"
                     byte[] bytes = Utils.HEX.decode
-                            ("04ffff00"+"1d0104"+"13"+
-                                    "5669727475616c20546f6b656e206269727468");
+                            ("04ffff00"+"1d0104"+"2a"+
+                                    "4c6f2063686f632070657220676c6920417a7a757272692066756f726920646169204d6f6e6469616c69");
                     //byte[] bytes = Utils.HEX.decode
                     //        ("04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73");
 
@@ -114,9 +114,9 @@ public class VtknTestNetParams extends AbstractBitcoinNetParams {
                 try {
                     ByteArrayOutputStream challengeBytes = new ByteArrayOutputStream();
                     challengeBytes.write(ScriptOpCodes.OP_1);
-                    Script.writeBytes(challengeBytes, Utils.HEX.decode("029c2ddd78a0f95f4e787554bfb4f74b2d7dcf40f79f443e5ef350e4a739470f39"));
-                    Script.writeBytes(challengeBytes, Utils.HEX.decode("03a183d14e5acf94aa29c2a200c1bf3de571e83eb734d95bbae890cb3601f0c451"));
-                    Script.writeBytes(challengeBytes, Utils.HEX.decode("02b255a2efbcf1582855fa4d9bb4a5f677668ed910bef61e986b39cc8d3ebaf284"));
+                    Script.writeBytes(challengeBytes, Utils.HEX.decode("0274b9539ccf659745550818b5782d950eca2d7a0ad21fd7ab5f06348cc8ba965b"));
+                    Script.writeBytes(challengeBytes, Utils.HEX.decode("0269a3bc44d5c01aef34db1c883df236187ef49c875662b39f55d16dc1fda56422"));
+                    Script.writeBytes(challengeBytes, Utils.HEX.decode("0301914408f03b2aaa24e1ba628813fa6cb795eb0b40d4768568000b68b6f8e075"));
                     challengeBytes.write(ScriptOpCodes.OP_3);
                     challengeBytes.write(ScriptOpCodes.OP_CHECKMULTISIG);
 
@@ -125,7 +125,7 @@ public class VtknTestNetParams extends AbstractBitcoinNetParams {
                     // Cannot happen.
                     throw new RuntimeException(e);
                 }
-                //checkState(genesis.getHashAsString().toLowerCase().equals("0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206"));
+                checkState(genesis.getHashAsString().toLowerCase().equals("fecda7660014b377f1043fdbe176431cd110242c59d273c5a815466dda41344d"));
             }
             return genesis;
         }
