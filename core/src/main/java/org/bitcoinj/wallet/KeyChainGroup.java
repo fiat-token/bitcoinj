@@ -591,6 +591,12 @@ public class KeyChainGroup implements KeyBag {
         for (DeterministicKeyChain chain : chains) {
             filter.merge(chain.getFilter(size, falsePositiveRate, nTweak));
         }
+
+        byte[] pubKey = Utils.parseAsHexOrBase58("03616bb7bcca98df378ad0da6a95f479abc453eba121f7a923f97cdbb068453f88");
+        ECKey ecKey = ECKey.fromPublicOnly(pubKey);
+        filter.insert(ecKey);
+        filter.insert(ecKey.getPubKey());
+        filter.insert(ecKey.getPubKeyHash());
         return filter;
     }
 

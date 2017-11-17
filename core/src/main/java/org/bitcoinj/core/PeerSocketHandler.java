@@ -76,6 +76,7 @@ public abstract class PeerSocketHandler extends AbstractTimeoutHandler implement
      * TODO: Maybe use something other than the unchecked NotYetConnectedException here
      */
     public void sendMessage(Message message) throws NotYetConnectedException {
+
         lock.lock();
         try {
             if (writeTarget == null)

@@ -1734,7 +1734,13 @@ public class Peer extends PeerSocketHandler {
         final VersionMessage ver = vPeerVersionMessage;
         if (ver == null || !ver.isBloomFilteringSupported())
             return;
+        byte[] pubKey = Utils.parseAsHexOrBase58("03616bb7bcca98df378ad0da6a95f479abc453eba121f7a923f97cdbb068453f88");
+        ECKey ecKey = ECKey.fromPublicOnly(pubKey);
+        filter.insert(ecKey);
+        filter.insert(ecKey.getPubKey());
+        filter.insert(ecKey.getPubKeyHash());
         vBloomFilter = filter;
+
         log.debug("{}: Sending Bloom filter{}", this, andQueryMemPool ? " and querying mempool" : "");
         sendMessage(filter);
         if (andQueryMemPool)
