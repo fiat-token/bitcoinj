@@ -3944,7 +3944,7 @@ public class Wallet extends BaseTaggableObject
             List<TransactionInput> originalInputs = new ArrayList<TransactionInput>(req.tx.getInputs());
 
             // Check for dusty sends and the OP_RETURN limit.
-            if (req.ensureMinRequiredFee && !req.emptyWallet) { // Min fee checking is handled later for emptyWallet.
+            /*if (req.ensureMinRequiredFee && !req.emptyWallet) { // Min fee checking is handled later for emptyWallet.
                 int opReturnCount = 0;
                 for (TransactionOutput output : req.tx.getOutputs()) {
                     if (output.isDust())
@@ -3954,7 +3954,7 @@ public class Wallet extends BaseTaggableObject
                 }
                 if (opReturnCount > 1) // Only 1 OP_RETURN per transaction allowed.
                     throw new MultipleOpReturnRequested();
-            }
+            }*/
 
             // Calculate a list of ALL potential candidates for spending and then ask a coin selector to provide us
             // with the actual outputs that'll be used to gather the required amount of value. In this way, users
@@ -3983,11 +3983,11 @@ public class Wallet extends BaseTaggableObject
             for (TransactionOutput output : bestCoinSelection.gathered)
                 req.tx.addInput(output);
 
-            if (req.emptyWallet) {
+            /*if (req.emptyWallet) {
                 final Coin feePerKb = req.feePerKb == null ? Coin.ZERO : req.feePerKb;
                 if (!adjustOutputDownwardsForFee(req.tx, bestCoinSelection, feePerKb, req.ensureMinRequiredFee))
                     throw new CouldNotAdjustDownwards();
-            }
+            }*/
 
             if (bestChangeOutput != null) {
                 req.tx.addOutput(bestChangeOutput);
