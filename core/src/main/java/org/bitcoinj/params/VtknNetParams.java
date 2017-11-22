@@ -63,6 +63,7 @@ public class VtknNetParams extends AbstractBitcoinNetParams {
         bip32HeaderPub = 0x0488B21E; //{0x04, 0x88, 0xB2, 0x1E}
         bip32HeaderPriv = 0x0488ADE4; //{0x04, 0x88, 0xAD, 0xE4}
 
+        goldenKey = "035c1f2a7d3761cd47c0acded27c7e4ee95f1a1c5f545a6f660b10b516965b69f0";
 
         majorityEnforceBlockUpgrade = VTKNTESTNET_MAJORITY_ENFORCE_BLOCK_UPGRADE;
         majorityRejectBlockOutdated = VTKNTESTNET_MAJORITY_REJECT_BLOCK_OUTDATED;
@@ -85,18 +86,16 @@ public class VtknNetParams extends AbstractBitcoinNetParams {
                 genesis = new Block(this, Block.BLOCK_VERSION_GENESIS);
                 genesis.setNonce(1);
                 genesis.setDifficultyTarget(0x207fFFFFL);
-                genesis.setTime(1504224000L);
+                genesis.setTime(1511346312L);
 
                 Transaction t = new Transaction(this);
                 try {
                     // A script containing the difficulty bits and the following message:
                     //
-                    //   "Virtual Token birth"
+                    //   "Lo choc per gli Azzurri fuori dai Mondiali"
                     byte[] bytes = Utils.HEX.decode
-                            ("04ffff00"+"1d0104"+"13"+
-                                    "5669727475616c20546f6b656e206269727468");
-                    //byte[] bytes = Utils.HEX.decode
-                    //        ("04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73");
+                            ("04ffff00"+"1d0104"+"2a"+
+                                    "4c6f2063686f632070657220676c6920417a7a757272692066756f726920646169204d6f6e6469616c69");
 
                     t.addInput(new TransactionInput(this, t, bytes));
                     ByteArrayOutputStream scriptPubKeyBytes = new ByteArrayOutputStream();
@@ -112,9 +111,9 @@ public class VtknNetParams extends AbstractBitcoinNetParams {
                 try {
                     ByteArrayOutputStream challengeBytes = new ByteArrayOutputStream();
                     challengeBytes.write(ScriptOpCodes.OP_1);
-                    Script.writeBytes(challengeBytes, Utils.HEX.decode("02a64ef3743aca9ebdc3493b9639e72efb9379ec893fb16082e2e5f26507a7c064"));
-                    Script.writeBytes(challengeBytes, Utils.HEX.decode("0367eb592715900598704846574f95a2c89866cf531a1387499015a3976d115d49"));
-                    Script.writeBytes(challengeBytes, Utils.HEX.decode("02d1fe19f7cdaee44674687850d80e5176db94f4574cdb4d2740574d7d5727c004"));
+                    Script.writeBytes(challengeBytes, Utils.HEX.decode("027c6ec6d7a34f94df66b3bc4dd9f1d92234f43e8df186da75b5a8e4c19309b731"));
+                    Script.writeBytes(challengeBytes, Utils.HEX.decode("03ac7b5e8094f77e68b78cc905385c57e721280ba051b134068b6178176f700411"));
+                    Script.writeBytes(challengeBytes, Utils.HEX.decode("03c28d8737981e0150569e76aba1349c339b5765d91d603745fe4c83f0631bad30"));
                     challengeBytes.write(ScriptOpCodes.OP_3);
                     challengeBytes.write(ScriptOpCodes.OP_CHECKMULTISIG);
 

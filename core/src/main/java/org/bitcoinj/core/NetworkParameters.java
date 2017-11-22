@@ -88,6 +88,8 @@ public abstract class NetworkParameters {
     protected byte[] alertSigningKey;
     protected int bip32HeaderPub;
     protected int bip32HeaderPriv;
+    
+    public String goldenKey;
 
     /** Used to check majorities for block version upgrade */
     protected int majorityEnforceBlockUpgrade;

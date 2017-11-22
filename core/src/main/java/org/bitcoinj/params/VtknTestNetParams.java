@@ -65,6 +65,7 @@ public class VtknTestNetParams extends AbstractBitcoinNetParams {
         bip32HeaderPub = 0x043587CF;
         bip32HeaderPriv = 0x04358394;
 
+        goldenKey = "03616bb7bcca98df378ad0da6a95f479abc453eba121f7a923f97cdbb068453f88";
 
         majorityEnforceBlockUpgrade = VTKNTESTNET_MAJORITY_ENFORCE_BLOCK_UPGRADE;
         majorityRejectBlockOutdated = VTKNTESTNET_MAJORITY_REJECT_BLOCK_OUTDATED;
